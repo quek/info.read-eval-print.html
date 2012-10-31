@@ -4,4 +4,5 @@
  (:use :cl)
  (:export #:html
           #:*html-output*
-          #:raw))
+          #:raw
+          #:*html-pprint*))

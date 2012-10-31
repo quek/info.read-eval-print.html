@@ -2,11 +2,21 @@
 
 (defvar *html-output* *standard-output*)
 
+(defvar *html-pprint* t)
+
+(defvar *indent* nil)
+
 (defmacro html (&body body)
-  `(progn
+  `(let ((*indent* (or *indent* 0)))
      ,@(loop for i in body
-             collect (walk-body i))
+             collect `(progn
+                        (pre-block)
+                        ,(walk-body i)
+                        (post-block)))
      (values)))
+
+(defstruct (raw (:constructor raw (value)))
+  value)
 
 (defun escape (string)
   (with-output-to-string (out)
@@ -48,29 +58,6 @@
 (defmethod emit ((thing raw))
   (write-string (raw-value thing) *html-output*))
 
-(defstruct (raw (:constructor raw (value)))
-  value)
-
-(defun walk-tag (body)
-  (multiple-value-bind (tag id classes) (parse-tag (car body))
-    (multiple-value-bind (attributes body /-p) (parse-tag-args (cdr body))
-      `(progn
-         (emit-raw-string ,(with-output-to-string (out)
-                             (format out "<~a" tag)
-                             (when id
-                               (format out " id=\"~a\"" id))
-                             (when classes
-                               (format out " class=\"~{~a~^ ~}\"" classes))))
-         ,@(loop for (k . v) in attributes
-                 collect `(emit-raw-string (format nil " ~a=\"~a\"" ,k (escape ,v))))
-         ,(if /-p
-              `(emit-raw-string "/>")
-              `(progn
-                 (emit-raw-string ">")
-                 ,@(when body
-                     `((html ,@body)
-                       (emit-raw-string ,(format nil "</~a>" tag))))))))))
-
 (defun parse-tag (tag)
   (let* ((str (string-downcase (symbol-name tag)))
          (p# (position #\# str))
@@ -107,3 +94,46 @@
                               args
                               (cdr (last args)))))))
      (f args))))
+
+(defun walk-tag (body)
+  (multiple-value-bind (tag id classes) (parse-tag (car body))
+    (multiple-value-bind (attributes body /-p) (parse-tag-args (cdr body))
+      `(progn
+         (emit-raw-string ,(with-output-to-string (out)
+                             (format out "<~a" tag)
+                             (when id
+                               (format out " id=\"~a\"" id))
+                             (when classes
+                               (format out " class=\"~{~a~^ ~}\"" classes))))
+         ,@(loop for (k . v) in attributes
+                 collect `(emit-raw-string (format nil " ~a=\"~a\"" ,k (escape ,v))))
+         ,(if /-p
+              `(emit-raw-string "/>")
+              `(progn
+                 (emit-raw-string ">")
+                 ,@(when body
+                     `((post-start-tag)
+                       (html ,@body)
+                       (pre-end-tag)
+                       (emit-raw-string ,(format nil "</~a>" tag))))))))))
+
+(defun pre-block ()
+  (when *html-pprint*
+    (emit-indent)))
+
+(defun post-block ()
+  (when *html-pprint*
+    (terpri *html-output*)))
+
+(defun post-start-tag ()
+  (when *html-pprint*
+    (incf *indent*)
+    (terpri *html-output*)))
+
+(defun pre-end-tag ()
+  (when *html-output*
+    (decf *indent*)
+    (emit-indent)))
+
+(defun emit-indent ()
+  (format *html-output* "~v@{~c~:*~}" (* 2 *indent*) #\space))
