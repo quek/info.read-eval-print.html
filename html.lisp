@@ -108,7 +108,7 @@
          ,@(loop for (k . v) in attributes
                  collect `(emit-raw-string (format nil " ~a=\"~a\"" ,k (escape ,v))))
          ,(if /-p
-              `(emit-raw-string "/>")
+              `(emit-raw-string " />")
               `(progn
                  (emit-raw-string ">")
                  ,@(when body

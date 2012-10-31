@@ -22,7 +22,7 @@
   (assert (string= "<p>hello</p>"
                    (html* (:p "hello"))))
 
-  (assert (string= "<br/>"
+  (assert (string= "<br />"
                    (html* (:br . /))))
 
   (assert (string= "<meta charset=\"utf-8\">"
