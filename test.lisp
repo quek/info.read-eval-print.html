@@ -62,8 +62,8 @@
   (assert (string= "<ul><li>1</li><li>2</li><li>3</li></ul>"
                    (html* (:ul (html (:li 1))
                                (html (:li 2))
-                               (html (:li 3))))))
-  )
+                               (html (:li 3)))))))
+
 (assert (string= "<!DOCTYPE html>
 <html>
   <head>
@@ -87,14 +87,28 @@
     </section>
   </body>
 </html>
-"
-                 (html* (raw "<!DOCTYPE html>")
-                   (:html
-                     (:head
-                      (:meta :charset "utf-8")
-                      (:meta :name "author" "Common Lisp")
-                      (:title "Hello"))
-                     (:body
-                      (:section
-                       (:p "bye" "bye")
-                       (:p "hello")))))))
+" (html* (raw "<!DOCTYPE html>")
+    (:html
+      (:head
+       (:meta :charset "utf-8")
+       (:meta :name "author" "Common Lisp")
+       (:title "Hello"))
+      (:body
+       (:section
+        (:p "bye" "bye")
+        (:p "hello")))))))
+
+(assert (string= "<ul>
+  <li>
+    1
+  </li>
+  <li>
+    2
+  </li>
+  <li>
+    3
+  </li>
+</ul>
+" (html* (:ul (loop for i from 1 to 3
+                    do (html (:li i)))))))
+

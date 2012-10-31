@@ -9,10 +9,9 @@
 (defmacro html (&body body)
   `(let ((*indent* (or *indent* 0)))
      ,@(loop for i in body
-             collect `(progn
-                        (pre-block)
-                        ,(walk-body i)
-                        (post-block)))
+             for form = (walk-body i)
+             when form
+             collect form)
      (values)))
 
 (defstruct (raw (:constructor raw (value)))
@@ -37,9 +36,25 @@
   (cond ((null body)
          nil)
         ((and (consp body) (keywordp (car body)))
-         (walk-tag body))
+         `(progn
+            (pre-block)
+            ,(walk-tag body)
+            (post-block)))
         (t
-         `(emit ,body))))
+         (let ((value (gensym))
+               (output (gensym)))
+           `(if *html-pprint*
+              (let (,value)
+                (let ((,output (with-output-to-string (*html-output*)
+                                 (setf ,value ,body))))
+                  (if ,value
+                      (progn
+                        (pre-block)
+                        (emit ,value)
+                        (emit-raw-string ,output)
+                        (post-block))
+                      (emit-raw-string ,output))))
+              (emit ,body))))))
 
 (defun emit-raw-string (string)
   (write-string string *html-output*))
