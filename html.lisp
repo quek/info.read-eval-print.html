@@ -6,6 +6,8 @@
 
 (defvar *indent* nil)
 
+(defparameter *disable-pprint-tag* '("textarea"))
+
 (defmacro html (&body body)
   `(let ((*indent* (or *indent* 0)))
      ,@(loop for i in body
@@ -135,10 +137,14 @@
               `(progn
                  (emit-raw-string ">")
                  ,@(when body
-                     `((post-start-tag)
-                       (html ,@body)
-                       (pre-end-tag)
-                       (emit-raw-string ,(format nil "</~a>" tag))))))))))
+                     (let ((form `((post-start-tag)
+                                   (html ,@body)
+                                   (pre-end-tag)
+                                   (emit-raw-string ,(format nil "</~a>" tag)))))
+                       (if (member tag *disable-pprint-tag* :test #'string=)
+                           `((let ((*html-pprint* nil))
+                               ,@form))
+                           form)))))))))
 
 (defun pre-block ()
   (when *html-pprint*
@@ -154,7 +160,7 @@
     (terpri *html-output*)))
 
 (defun pre-end-tag ()
-  (when *html-output*
+  (when *html-pprint*
     (decf *indent*)
     (emit-indent)))
 

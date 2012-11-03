@@ -112,3 +112,10 @@
 " (html* (:ul (loop for i from 1 to 3
                     do (html (:li i)))))))
 
+(assert (string= "<div>
+  <div>
+    <textarea>foo
+bar</textarea>
+  </div>
+</div>
+" (html* (:div (:div (:textarea (format nil "foo~%bar")))))))
