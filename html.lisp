@@ -17,9 +17,11 @@
 (defstruct (raw (:constructor raw (value)))
   value)
 
-(defun escape (string)
+(defgeneric escape (thing))
+
+(defmethod escape ((thing string))
   (with-output-to-string (out)
-    (loop for c across string
+    (loop for c across thing
           do (cond ((char= #\& c)
                     (write-string "&amp;" out))
                    ((char= #\< c)
@@ -31,6 +33,12 @@
                    ((char= #\' c)
                     (write-string "&#x27;" out))
                    (t (write-char c out))))))
+
+(defmethod escape ((thing null))
+  "")
+
+(defmethod escape (thing)
+  (princ-to-string thing))
 
 (defun walk-body (body)
   (cond ((null body)
