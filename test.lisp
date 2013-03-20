@@ -119,3 +119,6 @@ bar</textarea>
   </div>
 </div>
 " (html* (:div (:div (:textarea (format nil "foo~%bar")))))))
+
+(assert (string= "<script src=\"a.js\"></script>
+" (html* (:script :src "a.js"))))

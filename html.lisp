@@ -132,19 +132,21 @@
                                (format out " class=\"~{~a~^ ~}\"" classes))))
          ,@(loop for (k . v) in attributes
                  collect `(emit-raw-string (format nil " ~a=\"~a\"" ,k (escape ,v))))
-         ,(if /-p
-              `(emit-raw-string " />")
-              `(progn
-                 (emit-raw-string ">")
-                 ,@(when body
-                     (let ((form `((post-start-tag)
-                                   (html ,@body)
-                                   (pre-end-tag)
-                                   (emit-raw-string ,(format nil "</~a>" tag)))))
-                       (if (member tag *disable-pprint-tag* :test #'string=)
-                           `((let ((*html-pprint* nil))
-                               ,@form))
-                           form)))))))))
+         ,(cond ((and (string= "script" tag) (not body))
+                 `(emit-raw-string "></script>"))
+                (/-p
+                 `(emit-raw-string " />"))
+                (t `(progn
+                    (emit-raw-string ">")
+                    ,@(when body
+                        (let ((form `((post-start-tag)
+                                      (html ,@body)
+                                      (pre-end-tag)
+                                      (emit-raw-string ,(format nil "</~a>" tag)))))
+                          (if (member tag *disable-pprint-tag* :test #'string=)
+                              `((let ((*html-pprint* nil))
+                                  ,@form))
+                              form))))))))))
 
 (defun pre-block ()
   (when *html-pprint*
@@ -165,4 +167,5 @@
     (emit-indent)))
 
 (defun emit-indent ()
-  (format *html-output* "~v@{~c~:*~}" (* 2 *indent*) #\space))
+  (write-string (make-string (* 2 *indent*) :initial-element #\space)
+                *html-output*))
