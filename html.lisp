@@ -39,6 +39,9 @@
 (defmethod escape ((thing null))
   "")
 
+(defmethod escape ((thing list))
+  (format nil "~{~a~^ ~}" (mapcar #'escape thing)))
+
 (defmethod escape (thing)
   (princ-to-string thing))
 
@@ -123,6 +126,12 @@
 (defun walk-tag (body)
   (multiple-value-bind (tag id classes) (parse-tag (car body))
     (multiple-value-bind (attributes body /-p) (parse-tag-args (cdr body))
+      (when classes
+        (let ((kv (assoc "class" attributes :test #'string=)))
+          (when kv
+            (setf (cdr kv) `(append ',classes
+                                    (alexandria:ensure-list ,(cdr kv)))
+                  classes nil))))
       `(progn
          (emit-raw-string ,(with-output-to-string (out)
                              (format out "<~a" tag)
@@ -137,16 +146,16 @@
                 (/-p
                  `(emit-raw-string " />"))
                 (t `(progn
-                    (emit-raw-string ">")
-                    ,@(when body
-                        (let ((form `((post-start-tag)
-                                      (html ,@body)
-                                      (pre-end-tag)
-                                      (emit-raw-string ,(format nil "</~a>" tag)))))
-                          (if (member tag *disable-pprint-tag* :test #'string=)
-                              `((let ((*html-pprint* nil))
-                                  ,@form))
-                              form))))))))))
+                      (emit-raw-string ">")
+                      ,@(when body
+                          (let ((form `((post-start-tag)
+                                        (html ,@body)
+                                        (pre-end-tag)
+                                        (emit-raw-string ,(format nil "</~a>" tag)))))
+                            (if (member tag *disable-pprint-tag* :test #'string=)
+                                `((let ((*html-pprint* nil))
+                                    ,@form))
+                                form))))))))))
 
 (defun pre-block ()
   (when *html-pprint*

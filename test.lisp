@@ -122,3 +122,13 @@ bar</textarea>
 
 (assert (string= "<script src=\"a.js\"></script>
 " (html* (:script :src "a.js"))))
+
+(assert (string= "<div class=\"a b\">
+  c
+</div>
+" (html* (:div :class '("a" "b") "c"))))
+
+(assert (string= "<div class=\"z a0 a1 a2\">
+  c
+</div>
+" (html* (:div.z :class (loop for i to 2 collect (format nil "a~a" i)) "c"))))
