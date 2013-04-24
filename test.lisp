@@ -132,3 +132,28 @@ bar</textarea>
   c
 </div>
 " (html* (:div.z :class (loop for i to 2 collect (format nil "a~a" i)) "c"))))
+
+(assert (string= "<div a=\"b\">
+  c
+</div>
+" (html* (:div :a "b" "c"))))
+
+(assert (string= "<div a>
+  c
+</div>
+" (html* (:div :a t "c"))))
+
+(assert (string= "<div>
+  c
+</div>
+" (html* (:div :a nil "c"))))
+
+(assert (string= "<div a>
+  c
+</div>
+" (html* (:div :a (= 1 1) "c"))))
+
+(assert (string= "<div>
+  c
+</div>
+" (html* (:div :a (= 1 2) "c"))))

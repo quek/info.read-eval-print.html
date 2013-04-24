@@ -140,7 +140,13 @@
                              (when classes
                                (format out " class=\"~{~a~^ ~}\"" classes))))
          ,@(loop for (k . v) in attributes
-                 collect `(emit-raw-string (format nil " ~a=\"~a\"" ,k (escape ,v))))
+                 collect (let ((value (gensym)))
+                           `(let ((,value ,v))
+                              (cond ((eq ,value t)
+                                     (emit-raw-string ,(format nil " ~a" k)))
+                                    (,value
+                                     (emit-raw-string (format nil ,(format nil " ~a=\"~~a\"" k)
+                                                              (escape ,value))))))))
          ,(cond ((and (string= "script" tag) (not body))
                  `(emit-raw-string "></script>"))
                 (/-p
