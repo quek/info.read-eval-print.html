@@ -6,7 +6,7 @@
 
 (defvar *indent* nil)
 
-(defparameter *disable-pprint-tag* '("textarea"))
+(defparameter *disable-pprint-tag* '("textarea" "pre"))
 
 (defmacro html (&body body)
   `(let ((*indent* (or *indent* 0)))
