@@ -130,7 +130,7 @@
         (let ((kv (assoc "class" attributes :test #'string=)))
           (when kv
             (setf (cdr kv) `(append ',classes
-                                    (alexandria:ensure-list ,(cdr kv)))
+                                    (ensure-list ,(cdr kv)))
                   classes nil))))
       `(progn
          (emit-raw-string ,(with-output-to-string (out)
@@ -184,3 +184,8 @@
 (defun emit-indent ()
   (write-string (make-string (* 2 *indent*) :initial-element #\space)
                 *html-output*))
+
+(defun ensure-list (x)
+  (typecase x
+    (list x)
+    (t (list x))))
