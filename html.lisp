@@ -4,17 +4,19 @@
 
 (defvar *html-pprint* t)
 
-(defvar *indent* nil)
+(defvar *indent* 0)
 
 (defparameter *disable-pprint-tag* '("textarea" "pre"))
 
 (defmacro html (&body body)
-  `(let ((*indent* (or *indent* 0)))
+  (%html body))
+
+(defun %html (body)
+  `(progn
      ,@(loop for i in body
              for form = (walk-body i)
              when form
-             collect form)
-     (values)))
+               collect form)))
 
 (defstruct (raw (:constructor raw (value)))
   value)
@@ -45,29 +47,24 @@
 (defmethod escape (thing)
   (princ-to-string thing))
 
+(defun start-tag-p (form)
+  (and (consp form) (keywordp (car form))))
+
 (defun walk-body (body)
   (cond ((null body)
          nil)
-        ((and (consp body) (keywordp (car body)))
+        ((start-tag-p body)
          `(progn
-            (pre-block)
+            ,(pre-block)
             ,(walk-tag body)
-            (post-block)))
+            ,(post-block)))
         (t
-         (let ((value (gensym))
-               (output (gensym)))
-           `(if *html-pprint*
-              (let (,value)
-                (let ((,output (with-output-to-string (*html-output*)
-                                 (setf ,value ,body))))
-                  (if ,value
-                      (progn
-                        (pre-block)
-                        (emit ,value)
-                        (emit-raw-string ,output)
-                        (post-block))
-                      (emit-raw-string ,output))))
-              (emit ,body))))))
+         (if *html-pprint*
+             `(progn
+                ,(pre-block)
+                (emit, body)
+                ,(post-block))
+             `(emit ,body)))))
 
 (defun emit-raw-string (string)
   (write-string string *html-output*))
@@ -154,14 +151,13 @@
                 (t `(progn
                       (emit-raw-string ">")
                       ,@(when body
-                          (let ((form `((post-start-tag)
-                                        (html ,@body)
-                                        (pre-end-tag)
-                                        (emit-raw-string ,(format nil "</~a>" tag)))))
-                            (if (member tag *disable-pprint-tag* :test #'string=)
-                                `((let ((*html-pprint* nil))
-                                    ,@form))
-                                form))))))))))
+                          `(,@(let ((*html-pprint* (if (member tag *disable-pprint-tag* :test #'string=)
+                                                       nil
+                                                       *html-pprint*)))
+                                `(,(post-start-tag)
+                                  ,(%html body)
+                                  ,(pre-end-tag)))
+                            (emit-raw-string ,(format nil "</~a>" tag)))))))))))
 
 (defun pre-block ()
   (when *html-pprint*
@@ -169,21 +165,22 @@
 
 (defun post-block ()
   (when *html-pprint*
-    (terpri *html-output*)))
+    `(terpri *html-output*)))
 
 (defun post-start-tag ()
   (when *html-pprint*
-    (incf *indent*)
-    (terpri *html-output*)))
+    `(terpri *html-output*)))
 
 (defun pre-end-tag ()
   (when *html-pprint*
-    (decf *indent*)
+    (unless (zerop *indent*)
+      (decf *indent*))
     (emit-indent)))
 
 (defun emit-indent ()
-  (write-string (make-string (* 2 *indent*) :initial-element #\space)
-                *html-output*))
+  (when (plusp *indent*)
+    `(write-string ,(make-string (* 2 *indent*) :initial-element #\space)
+                   *html-output*)))
 
 (defun ensure-list (x)
   (typecase x
