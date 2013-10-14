@@ -62,7 +62,7 @@
          (if *html-pprint*
              `(progn
                 ,(pre-block)
-                (emit, body)
+                (emit ,body)
                 ,(post-block))
              `(emit ,body)))))
 
@@ -169,6 +169,7 @@
 
 (defun post-start-tag ()
   (when *html-pprint*
+    (incf *indent*)
     `(terpri *html-output*)))
 
 (defun pre-end-tag ()
