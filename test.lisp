@@ -163,3 +163,39 @@ bar</textarea>
   c
 </div>
 " (html* (:div :a (= 1 2) "c"))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmacro css* (&body body)
+  `(with-output-to-string (*html-output*)
+     (css ,@body)))
+
+(assert
+ (string= "body {
+  color: #000000;
+}
+" (css* (body (color %000000)))))
+
+(assert
+ (string= "h1 {
+  margin: 0 2px 0 4px;
+  color: red;
+}
+h2 {
+  text-align: center;
+}
+h3, h4 {
+  color: red;
+}
+a:hover {
+  font-size: 12px;
+}
+" (css*
+       (h1
+        (margin 0 2px 0 4px)
+        (color red))
+    (h2 (text-align center))
+    ((or h3 h4)
+     (color red))
+    (a%hover
+     (font-size 12px)))))

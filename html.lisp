@@ -69,6 +69,9 @@
 (defun emit-raw-string (string)
   (write-string string *html-output*))
 
+(defun emit-newline ()
+  (terpri *html-output*))
+
 (defgeneric emit (thing))
 
 (defmethod emit (thing)
