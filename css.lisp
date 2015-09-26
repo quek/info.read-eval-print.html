@@ -1,65 +1,46 @@
 (in-package :info.read-eval-print.html)
 
-(defmacro css (&body body)
-  `(progn ,@(mapcar #'walk-selector body)
-          (values)))
+(defun css-to-s (x)
+  (typecase x
+    (symbol
+     (let ((name (symbol-name x)))
+       (if (some #'lower-case-p name)
+           name
+           (string-downcase name))))
+    (t (princ-to-string x))))
 
-(defun walk-selector (css)
-  `(progn
-     (emit-raw-string ,(css-selector (car css)))
-     (emit-raw-string " {")
-     (emit-newline)
-     ,@(mapcar #'walk-property (cdr css))
-     (emit-raw-string "}")
-     (emit-newline)))
+(defun css-split-properties (form &optional acc)
+  (let ((pos (position-if #'keywordp form :start 1)))
+    (if pos
+        (css-split-properties (subseq form pos) (cons (subseq form 0 pos) acc))
+        (nreverse (cons form acc)))))
 
+(defun write-css-selector (selector)
+  (format *html-output* "~&~{~a~^ ~}" (mapcar #'css-to-s selector)))
 
-(defun walk-property (property)
-  `(progn
-     (emit-raw-string "  ")
-     (emit-raw-string ,(css-property (car property)))
-     (emit-raw-string ": ")
-     (emit-raw-string ,(css-value (cdr property)))
-     (emit-raw-string ";") 
-     (emit-newline)))
+(defun write-css-property (property)
+  (format *html-output* "~a:" (css-to-s (car property)))
+  (format *html-output* "~{~a~^ ~};" (mapcar #'css-to-s (cdr property))))
 
+(defun css-flatten (form &optional parent-selector)
+  (if (null form)
+      nil
+      (let* ((pos (position-if (lambda (x) (or (keywordp x) (consp x))) form :start 1))
+             (selector (subseq form 0 pos))
+             (rest (subseq form pos))
+             (properties (remove-if #'consp rest))
+             (children (loop for child in (remove-if-not  #'consp rest)
+                             nconc (css-flatten child (append parent-selector selector)))))
+        (if properties
+            (cons `(,(append parent-selector selector) ,properties)
+                  children)
+            children))))
 
-
-(defgeneric css-selector (x))
-
-(defmethod css-selector ((x string))
-  x)
-
-(defmethod css-selector ((x symbol))
-  (let ((str (string-downcase x)))
-    (substitute #\: #\% str)))
-
-(defmethod css-selector ((x list))
-  (if (string-equal "OR" (car x))
-      (format nil "~{~a~^, ~}" (mapcar #'css-selector (cdr x)))
-      (format nil "~{~a~^ ~}" (mapcar #'css-selector x))))
-
-(defgeneric css-property (x))
-
-(defmethod css-property ((x string))
-  x)
-
-(defmethod css-property ((x symbol))
-  (string-downcase x))
-
-(defgeneric css-value (x))
-
-(defmethod css-value (x)
-  (princ-to-string x))
-
-(defmethod css-value ((x string))
-  x)
-
-(defmethod css-value ((x symbol))
-  (let ((str (string-downcase x)))
-    (if (char= #\% (char str 0))
-        (format nil "#~a" (subseq str 1))
-        str)))
-
-(defmethod css-value ((x list))
-  (format nil "~{~a~^ ~}" (mapcar #'css-value x)))
+(defun css (forms)
+  (mapc (lambda (form)
+          (loop for (selector properties) in (css-flatten form) do
+            (write-css-selector selector)
+            (write-char #\{ *html-output*)
+            (mapc #'write-css-property (css-split-properties properties))
+            (write-char #\} *html-output*)))
+        forms))

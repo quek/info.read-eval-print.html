@@ -175,34 +175,15 @@ bar</textarea>
 
 (test css
   (is
-   (string= "body {
-  color: #000000;
-}
-" (css* (body (color %000000)))))
-
+   (string= "body{color:#000000;}"
+            (css* `((body :color \#000000)))))
   (is
-   (string= "h1 {
-  margin: 0 2px 0 4px;
-  color: red;
-}
-h2 {
-  text-align: center;
-}
-h3, h4 {
-  color: red;
-}
-a:hover {
-  font-size: 12px;
-}
-" (css*
-    (h1
-     (margin 0 2px 0 4px)
-     (color red))
-    (h2 (text-align center))
-    ((or h3 h4)
-     (color red))
-    (a%hover
-     (font-size 12px))))))
-
+   (string= "h1{margin:0 2px 0 4px;color:red;}
+h2{text-align:center;}
+a:hover{font-size:12px;}"
+            (css*
+              `((h1 :margin 0 2px 0 4px :color red)
+                (h2 :text-align center)
+                (a\:hover :font-size 12px))))))
 
 (debug!)
