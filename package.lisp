@@ -5,6 +5,4 @@
  (:export #:html
           #:*html-output*
           #:raw
-          #:*html-pprint*
-
-          #:css))
+          #:*html-pprint*))

@@ -3,5 +3,4 @@
   :version "0.0.0"
   :serial t
   :components ((:file "package")
-               (:file "html")
-               (:file "css")))
+               (:file "html")))
