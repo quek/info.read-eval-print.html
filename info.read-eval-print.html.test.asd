@@ -4,4 +4,4 @@
   :components ((:file "package")
                (:file "test"))
   :depends-on (:info.read-eval-print.html
-               :fiveam))
+               :fiasco))

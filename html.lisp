@@ -1,22 +1,21 @@
 (in-package :info.read-eval-print.html)
 
-(defvar *html-output* *standard-output*)
+(defvar *buffer* nil)
 
-(defvar *html-pprint* t)
+(defparameter *external-format* :utf-8)
 
-(defvar *indent* 0)
+(defmacro html (&body body &environment env)
+  (let ((top-level-p (gensym)))
+    `(let ((,top-level-p (not *buffer*))
+           (*buffer* (or *buffer* (make-array 256 :adjustable t :fill-pointer 0))))
+       ,@(%html body env)
+       (and ,top-level-p *buffer*))))
 
-(defparameter *disable-pprint-tag* '("textarea" "pre"))
-
-(defmacro html (&body body)
-  (%html body))
-
-(defun %html (body)
-  `(progn
-     ,@(loop for i in body
-             for form = (walk-body i)
-             when form
-               collect form)))
+(defun %html (body env)
+  (loop for i in body
+        for form = (walk-body i env)
+        when form
+          nconc form))
 
 (defstruct (raw (:constructor raw (value)))
   value)
@@ -50,27 +49,21 @@
 (defun start-tag-p (form)
   (and (consp form) (keywordp (car form))))
 
-(defun walk-body (body)
+(defun walk-body (body env)
   (cond ((null body)
          nil)
         ((start-tag-p body)
-         `(progn
-            ,(pre-block)
-            ,(walk-tag body)
-            ,(post-block)))
+         `(,@(walk-tag body env)))
         (t
-         (if *html-pprint*
-             `(progn
-                ,(pre-block)
-                (emit ,body)
-                ,(post-block))
-             `(emit ,body)))))
+         `((emit ,body)))))
 
 (defun emit-raw-string (string)
-  (write-string string *html-output*))
+  (vector-push-extend (string-to-octets string) *buffer*))
 
-(defun emit-newline ()
-  (terpri *html-output*))
+(defun *emit-raw-string (string env)
+  (if (constantp string env)
+      `(vector-push-extend ,(string-to-octets string) *buffer*)
+      `(emit-raw-string ,string)))
 
 (defgeneric emit (thing))
 
@@ -78,13 +71,12 @@
   (emit (princ-to-string thing)))
 
 (defmethod emit ((thing string))
-  (write-string (escape thing) *html-output*))
+  (emit-raw-string (escape thing)))
 
-(defmethod emit ((thing null))
-  )
+(defmethod emit ((thing null)))
 
 (defmethod emit ((thing raw))
-  (write-string (raw-value thing) *html-output*))
+  (emit-raw-string (raw-value thing)))
 
 (defun parse-tag (tag)
   (let* ((str (string-downcase (symbol-name tag)))
@@ -110,20 +102,20 @@
 
 (defun parse-tag-args (args)
   (let (attributes)
-   (labels ((f (args)
-              (if (and (consp args)
-                       (keywordp (car args)))
-                  (progn
-                    (push (cons (string-downcase (car args)) (cadr args)) attributes)
-                    (f (cddr args)))
-                  (values (nreverse attributes)
-                          args
-                          (if (atom args)
-                              args
-                              (cdr (last args)))))))
-     (f args))))
+    (labels ((f (args)
+               (if (and (consp args)
+                        (keywordp (car args)))
+                   (progn
+                     (push (cons (string-downcase (car args)) (cadr args)) attributes)
+                     (f (cddr args)))
+                   (values (nreverse attributes)
+                           args
+                           (if (atom args)
+                               args
+                               (cdr (last args)))))))
+      (f args))))
 
-(defun walk-tag (body)
+(defun walk-tag (body env)
   (multiple-value-bind (tag id classes) (parse-tag (car body))
     (multiple-value-bind (attributes body /-p) (parse-tag-args (cdr body))
       (when classes
@@ -132,61 +124,67 @@
             (setf (cdr kv) `(append ',classes
                                     (ensure-list ,(cdr kv)))
                   classes nil))))
-      `(progn
-         (emit-raw-string ,(with-output-to-string (out)
+      `(,(*emit-raw-string (with-output-to-string (out)
                              (format out "<~a" tag)
                              (when id
                                (format out " id=\"~a\"" id))
                              (when classes
-                               (format out " class=\"~{~a~^ ~}\"" classes))))
-         ,@(loop for (k . v) in attributes
-                 collect (let ((value (gensym)))
-                           `(let ((,value ,v))
-                              (cond ((eq ,value t)
-                                     (emit-raw-string ,(format nil " ~a" k)))
-                                    (,value
-                                     (emit-raw-string (format nil ,(format nil " ~a=\"~~a\"" k)
-                                                              (escape ,value))))))))
-         ,(cond ((and (string= "script" tag) (not body))
-                 `(emit-raw-string "></script>"))
+                               (format out " class=\"~{~a~^ ~}\"" classes)))
+                           env)
+        ,@(loop for (k . v) in attributes
+                collect (let ((value (gensym)))
+                          `(let ((,value ,v))
+                             (cond ((eq ,value t)
+                                    (emit-raw-string ,(format nil " ~a" k)))
+                                   (,value
+                                    (emit-raw-string (format nil ,(format nil " ~a=\"~~a\"" k)
+                                                             (escape ,value))))))))
+        ,@(cond ((and (string= "script" tag) (not body))
+                 `((emit-raw-string "></script>")))
                 (/-p
-                 `(emit-raw-string " />"))
-                (t `(progn
-                      (emit-raw-string ">")
-                      ,@(when body
-                          `(,@(let ((*html-pprint* (if (member tag *disable-pprint-tag* :test #'string=)
-                                                       nil
-                                                       *html-pprint*)))
-                                `(,(post-start-tag)
-                                  ,(%html body)
-                                  ,(pre-end-tag)))
-                            (emit-raw-string ,(format nil "</~a>" tag)))))))))))
-
-(defun pre-block ()
-  (when *html-pprint*
-    (emit-indent)))
-
-(defun post-block ()
-  (when *html-pprint*
-    `(terpri *html-output*)))
-
-(defun post-start-tag ()
-  (when *html-pprint*
-    (incf *indent*)
-    `(terpri *html-output*)))
-
-(defun pre-end-tag ()
-  (when *html-pprint*
-    (unless (zerop *indent*)
-      (decf *indent*))
-    (emit-indent)))
-
-(defun emit-indent ()
-  (when (plusp *indent*)
-    `(write-string ,(make-string (* 2 *indent*) :initial-element #\space)
-                   *html-output*)))
+                 `(,(*emit-raw-string " />" env)))
+                (t `(,(*emit-raw-string ">" env)
+                     ,@(when body
+                         `(,@(%html body env)
+                           ,(*emit-raw-string (format nil "</~a>" tag) env))))))))))
 
 (defun ensure-list (x)
   (typecase x
     (list x)
     (t (list x))))
+
+(defun string-to-octets (string)
+  (sb-ext:string-to-octets string :external-format *external-format*))
+
+
+
+(defun f ()
+  (loop for i across (print (html (:h1 "あ")
+                              (:ul#a.d :class "c d" :data-foo "bar"
+                               (:li.b "か")
+                               (:li "さ"))))
+          initially (terpri)
+        do (write-string (sb-ext:octets-to-string i))))
+
+
+#|
+(loop for i across (print (html (:h1 "あ")
+                            (:ul#a
+                             (:li.b "か")
+                             (:li "さ"))))
+      do (write-string (sb-ext:octets-to-string i)))
+
+(html (:h1 "あ")
+  (:ul#a.d :class "c d" :data-foo "bar"
+           (:li.b "か")
+           (:li "さ")))
+
+(html (:ul (loop for i from 1 to 3
+                 do (html (:li i)))))
+
+(html (:ul (html (:li 1))
+        (html (:li 2))
+        (html (:li 3))))
+
+nil
+|#
