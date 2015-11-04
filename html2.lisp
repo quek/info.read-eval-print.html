@@ -58,6 +58,11 @@
 (defun emit-raw-string (string)
   (vector-push-extend (string-to-octets string) *buffer*))
 
+(defun *emit-raw-string (string env)
+  (if (constantp string env)
+      `(vector-push-extend ,(string-to-octets string) *buffer*)
+      `(emit-raw-string ,string)))
+
 (defgeneric emit (thing))
 
 (defmethod emit (thing)
@@ -117,12 +122,13 @@
             (setf (cdr kv) `(append ',classes
                                     (ensure-list ,(cdr kv)))
                   classes nil))))
-      `((emit-raw-string ,(with-output-to-string (out)
-                            (format out "<~a" tag)
-                            (when id
-                              (format out " id=\"~a\"" id))
-                            (when classes
-                              (format out " class=\"~{~a~^ ~}\"" classes))))
+      `(,(*emit-raw-string (with-output-to-string (out)
+                             (format out "<~a" tag)
+                             (when id
+                               (format out " id=\"~a\"" id))
+                             (when classes
+                               (format out " class=\"~{~a~^ ~}\"" classes)))
+                           env)
         ,@(loop for (k . v) in attributes
                 collect (let ((value (gensym)))
                           `(let ((,value ,v))
@@ -134,11 +140,11 @@
         ,@(cond ((and (string= "script" tag) (not body))
                  `((emit-raw-string "></script>")))
                 (/-p
-                 `((emit-raw-string " />")))
-                (t `((emit-raw-string ">")
+                 `(,(*emit-raw-string " />" env)))
+                (t `(,(*emit-raw-string ">" env)
                      ,@(when body
                          `(,@(%html body env)
-                           (emit-raw-string ,(format nil "</~a>" tag)))))))))))
+                           ,(*emit-raw-string (format nil "</~a>" tag) env))))))))))
 
 (defun ensure-list (x)
   (typecase x
@@ -147,3 +153,21 @@
 
 (defun string-to-octets (string)
   (sb-ext:string-to-octets string :external-format *external-format*))
+
+
+
+
+#|
+(loop for i across (print (html (:h1 "あ")
+                            (:ul#a
+                             (:li.b "か")
+                             (:li "さ"))))
+      do (write-string (sb-ext:octets-to-string i)))
+
+(html (:h1 "あ")
+  (:ul#a
+   (:li.b "か")
+   (:li "さ")))
+
+nil
+|#
