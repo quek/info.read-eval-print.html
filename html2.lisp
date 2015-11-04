@@ -156,6 +156,14 @@
 
 
 
+(defun f ()
+  (loop for i across (print (html (:h1 "あ")
+                              (:ul#a.d :class "c d" :data-foo "bar"
+                               (:li.b "か")
+                               (:li "さ"))))
+          initially (terpri)
+        do (write-string (sb-ext:octets-to-string i))))
+
 
 #|
 (loop for i across (print (html (:h1 "あ")
@@ -165,9 +173,9 @@
       do (write-string (sb-ext:octets-to-string i)))
 
 (html (:h1 "あ")
-  (:ul#a
-   (:li.b "か")
-   (:li "さ")))
+  (:ul#a.d :class "c d" :data-foo "bar"
+           (:li.b "か")
+           (:li "さ")))
 
 nil
 |#
