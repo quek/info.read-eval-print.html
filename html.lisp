@@ -157,7 +157,7 @@
   (sb-ext:string-to-octets string :external-format *external-format*))
 
 
-
+#+nil
 (defun f ()
   (loop for i across (print (html (:h1 "あ")
                               (:ul#a.d :class "c d" :data-foo "bar"
