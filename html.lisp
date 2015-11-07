@@ -167,14 +167,15 @@
                           (if (constantp v env)
                               (if (eq v t)
                                   (*emit-raw-string (format nil " ~a" k) env)
-                                  (*emit-raw-string (format nil " ~a=\"~a\"" k (escape v))
+                                  (*emit-raw-string (format nil " ~a=\"~a\"" k
+                                                            (attr-value v k))
                                                     env))
                               `(let ((,value ,v))
                                  (cond ((eq ,value t)
                                         (emit-raw-string ,(format nil " ~a" k)))
                                        (,value
                                         (emit-raw-string (format nil ,(format nil " ~a=\"~~a\"" k)
-                                                                 (escape ,value)))))))))
+                                                                 (attr-value ,value ,k)))))))))
         ,@(cond ((and (string= "script" tag) (not body))
                  `(,(*emit-raw-string "></script>" env)))
                 (/-p
@@ -183,6 +184,48 @@
                      ,@(when body
                          `(,@(%html body env)
                            ,(*emit-raw-string (format nil "</~a>" tag) env))))))))))
+
+(defun attr-value (value attr)
+  (cond ((or (equal attr "href")
+             (equal attr "src"))
+         (url value))
+        (t
+         (escape value))))
+
+(defun url (value &rest k-v-list)
+  (flet ((f (x &optional paramp)
+           (cond ((or (<= #.(char-code #\a) x #.(char-code #\z))
+                      (<= #.(char-code #\A) x #.(char-code #\Z))
+                      (<= #.(char-code #\0) x #.(char-code #\9))
+                      (= x #.(char-code #\.))
+                      (= x #.(char-code #\:))
+                      (= x #.(char-code #\/))
+                      (= x #.(char-code #\-))
+                      (= x #.(char-code #\_))
+                      (and (not paramp)
+                           (or
+                            (= x #.(char-code #\=))
+                            (= x #.(char-code #\&))
+                            (= x #.(char-code #\?))
+                            (= x #.(char-code #\#)))))
+                  (string (code-char x)))
+                 ((= x #.(char-code #\space))
+                  "+")
+                 (t
+                  (format nil "%~2,'0x" x)))))
+    (with-output-to-string (out)
+      (loop for i across (string-to-octets value)
+            do (write-string (f i) out))
+      (when k-v-list
+        (unless (find #\? value)
+          (write-char #\? out))
+        (loop for (k v next) on k-v-list by #'cddr
+              do (loop for i across (string-to-octets (if (symbolp k) (string-downcase k) k))
+                       do (write-string (f i t) out))
+                 (write-char #\= out)
+                 (loop for i across (string-to-octets (if (symbolp v) (string-downcase v) v))
+                       do (write-string (f i t) out))
+                 (and next (write-char #\& out)))))))
 
 (defun ensure-list (x)
   (typecase x
