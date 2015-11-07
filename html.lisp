@@ -4,12 +4,15 @@
 
 (defparameter *external-format* :utf-8)
 
+(defmacro with-html-buffer ((&optional buffer) &body body)
+  `(let ((*buffer* (or ,buffer (make-array 256 :adjustable t :fill-pointer 0))))
+     ,@body
+     *buffer*))
+
 (defmacro html (&body body &environment env)
-  (let ((top-level-p (gensym)))
-    `(let ((,top-level-p (not *buffer*))
-           (*buffer* (or *buffer* (make-array 256 :adjustable t :fill-pointer 0))))
-       ,@(concatenate-form (%html body env))
-       (and ,top-level-p *buffer*))))
+  `(progn
+     ,@(concatenate-form (%html body env))
+     nil))
 
 (defun concatenate-form (form)
   (flet ((target-form-p (x)
@@ -168,7 +171,7 @@
                                     (emit-raw-string (format nil ,(format nil " ~a=\"~~a\"" k)
                                                              (escape ,value))))))))
         ,@(cond ((and (string= "script" tag) (not body))
-                 `((emit-raw-string "></script>")))
+                 `(,(*emit-raw-string "></script>" env)))
                 (/-p
                  `(,(*emit-raw-string " />" env)))
                 (t `(,(*emit-raw-string ">" env)

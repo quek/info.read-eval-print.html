@@ -1,9 +1,10 @@
 (in-package :info.read-eval-print.html.test)
 
-(defun s (vector)
-  (with-output-to-string (out)
-    (loop for i across vector
-          do (write-string (sb-ext:octets-to-string i) out))))
+(defmacro s (&body body)
+  `(with-output-to-string (out)
+     (loop for i across (with-html-buffer ()
+                          ,@body)
+           do (write-string (sb-ext:octets-to-string i) out))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (deftest test-basic ()
