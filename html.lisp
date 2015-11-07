@@ -8,8 +8,28 @@
   (let ((top-level-p (gensym)))
     `(let ((,top-level-p (not *buffer*))
            (*buffer* (or *buffer* (make-array 256 :adjustable t :fill-pointer 0))))
-       ,@(%html body env)
+       ,@(concatenate-form (%html body env))
        (and ,top-level-p *buffer*))))
+
+(defun concatenate-form (form)
+  (flet ((target-form-p (x)
+           (and (consp x) (eq 'vector-push-extend (car x))))
+         (concat-form (a b)
+           (if a
+               `(vector-push-extend
+                 ,(concatenate '(simple-array (unsigned-byte 8) (*))
+                               (cadr a) (cadr b))
+                 *buffer*)
+               b)))
+    (let (r x)
+      (loop for i in form
+            do (cond ((target-form-p i)
+                      (setf x (concat-form x i)))
+                     (t
+                      (when x (push x r) (setf x nil))
+                      (push i r))))
+      (when x (push x r))
+      (nreverse r))))
 
 (defun %html (body env)
   (loop for i in body
@@ -55,7 +75,7 @@
         ((start-tag-p body)
          `(,@(walk-tag body env)))
         (t
-         `((emit ,body)))))
+         `(,@(*emit body env)))))
 
 (defun emit-raw-string (string)
   (vector-push-extend (string-to-octets string) *buffer*))
@@ -64,6 +84,14 @@
   (if (constantp string env)
       `(vector-push-extend ,(string-to-octets string) *buffer*)
       `(emit-raw-string ,string)))
+
+(defun *emit (thing env)
+  (if (constantp thing env)
+      (when thing
+        `((vector-push-extend
+           ,(string-to-octets (escape (princ-to-string thing)))
+           *buffer*)))
+      `((emit ,thing))))
 
 (defgeneric emit (thing))
 
