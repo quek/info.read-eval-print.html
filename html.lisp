@@ -165,12 +165,10 @@
         ,@(loop for (k . v) in attributes
                 collect (let ((value (gensym)))
                           (if (constantp v env)
-                              (progn
-                                (print (list k v))
-                                (if (eq v t)
-                                    (*emit-raw-string (format nil " ~a" k) env)
-                                    (*emit-raw-string (format nil " ~a=\"~a\"" k (escape v))
-                                                      env)))
+                              (if (eq v t)
+                                  (*emit-raw-string (format nil " ~a" k) env)
+                                  (*emit-raw-string (format nil " ~a=\"~a\"" k (escape v))
+                                                    env))
                               `(let ((,value ,v))
                                  (cond ((eq ,value t)
                                         (emit-raw-string ,(format nil " ~a" k)))
