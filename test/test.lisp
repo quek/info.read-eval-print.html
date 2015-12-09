@@ -63,4 +63,8 @@
                           (html (:li 2))
                           (html (:li 3))))))))
 
+(deftest test-escape ()
+  (is (string= "<p id=\"&lt;id&gt;\" class=\"&lt;class&gt;\" data-x=\"&lt;data&gt;\">&lt;body&gt;</p>"
+               (s (html (:p#<id>.<class> :data-x "<data>" "<body>"))))))
+
 (run-package-tests :interactive t)
