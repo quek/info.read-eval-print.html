@@ -109,8 +109,15 @@
 (defmethod emit ((thing raw))
   (emit-raw-string (raw-value thing)))
 
+(defun symbol-to-string (symbol)
+  (let ((name (symbol-name symbol)))
+    (print name)
+    (if (some #'lower-case-p name)
+        name
+        (string-downcase name))))
+
 (defun parse-tag (tag)
-  (let* ((str (string-downcase (symbol-name tag)))
+  (let* ((str (symbol-to-string tag))
          (p# (position #\# str))
          (p. (position #\. str)))
     (cond ((and (not p#) (not p.))
