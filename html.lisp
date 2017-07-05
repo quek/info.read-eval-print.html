@@ -111,7 +111,6 @@
 
 (defun symbol-to-string (symbol)
   (let ((name (symbol-name symbol)))
-    (print name)
     (if (some #'lower-case-p name)
         name
         (string-downcase name))))
