@@ -7,12 +7,14 @@
            do (write-string (sb-ext:octets-to-string i) out))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(alexandria:define-constant +hello+ "Hello!" :test #'string=)
+
 (deftest test-basic ()
   (is (string= "hello"
                (s (html "hello"))))
 
-  (is (string= "hello"
-               (s (html "hello"))))
+  (is (string= "Hello!"
+               (s (html +hello+))))
 
 
   (is (string= "&<>\"'"

@@ -3,5 +3,6 @@
   :pathname "test/"
   :components ((:file "package")
                (:file "test"))
-  :depends-on (:info.read-eval-print.html
+  :depends-on (:alexandria
+               :info.read-eval-print.html
                :fiasco))

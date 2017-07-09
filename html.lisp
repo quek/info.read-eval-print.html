@@ -92,7 +92,7 @@
   (if (constantp thing env)
       (when thing
         `((vector-push-extend
-           ,(string-to-octets (escape (princ-to-string thing)))
+           ,(eval `(string-to-octets (escape (princ-to-string ,thing))))
            *buffer*)))
       `((emit ,thing))))
 
