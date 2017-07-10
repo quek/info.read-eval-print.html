@@ -2,4 +2,4 @@
 
 (defpackage :info.read-eval-print.html
  (:use :cl)
- (:export #:html #:raw #:with-html-buffer))
+ (:export #:html #:raw #:escape #:with-html-buffer))
