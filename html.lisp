@@ -67,7 +67,7 @@
   (format nil "~{~a~^ ~}" (mapcar #'escape thing)))
 
 (defmethod escape (thing)
-  (princ-to-string thing))
+  (escape (princ-to-string thing)))
 
 (defun start-tag-p (form)
   (and (consp form) (keywordp (car form))))
