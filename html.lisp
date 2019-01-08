@@ -81,7 +81,7 @@
          `(,@(*emit body env)))))
 
 (defun emit-raw-string (string)
-  (vector-push-extend (string-to-octets string) *buffer*))
+  (vector-push-extend (string-to-octets (or string "")) *buffer*))
 
 (defun *emit-raw-string (string env)
   (if (constantp string env)
